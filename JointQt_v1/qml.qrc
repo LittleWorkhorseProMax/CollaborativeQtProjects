@@ -1,0 +1,9 @@
+<RCC>
+    <qresource prefix="/">
+        <file>main.qml</file>
+        <file>PageAdd.qml</file>
+        <file>PageGallery.qml</file>
+        <file>PageSearch.qml</file>
+        <file>PageDashboard.qml</file>
+    </qresource>
+</RCC>

@@ -1,0 +1,26 @@
+<RCC>
+    <qresource prefix="/">
+        <file>main.qml</file>
+        <file>qml/assets/Theme.qml</file>
+        <file>qml/assets/qmldir</file>
+        <file>qml/assets/placeholder.svg</file>
+        <file>qml/assets/camera.svg</file>
+        <file>qml/assets/gallery.svg</file>
+        <file>qml/assets/collection.svg</file>
+        <file>qml/assets/upload.svg</file>
+        <file>qml/assets/trash.svg</file>
+        <file>qml/assets/settings.svg</file>
+        <file>qml/assets/menu.svg</file>
+        <file>qml/assets/filter.svg</file>
+        <file>qml/pages/GalleryPage.qml</file>
+        <file>qml/pages/DetailPage.qml</file>
+        <file>qml/pages/UploadPage.qml</file>
+        <file>qml/pages/AdminPage.qml</file>
+        <file>qml/pages/CollectionsPage.qml</file>
+        <file>qml/pages/TrashPage.qml</file>
+        <file>qml/components/ImageGrid.qml</file>
+        <file>qml/components/ImageList.qml</file>
+        <file>qml/components/CButton.qml</file>
+        <file>qml/components/Sidebar.qml</file>
+    </qresource>
+</RCC>

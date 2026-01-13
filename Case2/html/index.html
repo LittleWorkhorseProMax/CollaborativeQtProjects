@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- 关键：放松内容安全策略 -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data:;"
+    />
+    <title>Qt Quick Hybrid App</title>
+    <style>
+      body {
+        font-family: "Microsoft YaHei", sans-serif;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        height: 100vh;
+      }
+      #sidebar {
+        width: 200px;
+        background: #2c3e50;
+        color: white;
+        display: flex;
+        flex-direction: column;
+      }
+      #sidebar button {
+        background: none;
+        border: none;
+        color: white;
+        padding: 15px;
+        text-align: left;
+        cursor: pointer;
+        font-size: 16px;
+        transition: 0.3s;
+      }
+      #sidebar button:hover {
+        background: #34495e;
+      }
+      #sidebar button.active {
+        background: #2980b9;
+      }
+      #content {
+        flex: 1;
+        padding: 20px;
+        background: #ecf0f1;
+        overflow: auto;
+      }
+      .page {
+        display: none;
+      }
+      .page.active {
+        display: block;
+      }
+      .card {
+        background: white;
+        padding: 20px;
+        border-radius: 5px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+      }
+      input[type="text"] {
+        padding: 10px;
+        width: 300px;
+        margin-right: 10px;
+      }
+      button.action-btn {
+        padding: 10px 20px;
+        background: #27ae60;
+        color: white;
+        border: none;
+        cursor: pointer;
+      }
+      #log-area {
+        width: 100%;
+        height: 200px;
+        background: #333;
+        color: #0f0;
+        font-family: monospace;
+        padding: 10px;
+        overflow-y: scroll;
+        white-space: pre-wrap;
+      }
+    </style>
+    <!-- 引入 qwebchannel.js，这是 Qt 提供的用于 JS 与 C++ 通信的库
+         请确保该文件在相同目录下，或者构建系统将其正确复制到了输出目录 -->
+    <script src="qwebchannel.js"></script>
+    <script>
+      var backend; // 这一变量将持有 C++ 中的 NetworkManager 对象的代理
+
+      // 页面加载完成时的初始化逻辑
+      window.onload = function () {
+        // WebSocket 相关的代码可以暂时忽略，因为如果是通过 QWebEngineView 加载，
+        // Qt 会自动注入 qt.webChannelTransport，无需手动建立 WebSocket 连接。
+        if (location.search != "")
+          var baseUrl = /[?&]webChannelBaseUrl=([^&]+)/.exec(
+            location.search
+          )[1];
+        else var baseUrl = "ws://localhost:12345";
+
+        // 【关键】建立 WebChannel 连接
+        // qt.webChannelTransport 是 Qt WebEngine 注入的全局对象
+        // 只有在 Qt 环境下运行时它才存在
+        if (typeof qt !== "undefined") {
+          new QWebChannel(qt.webChannelTransport, function (channel) {
+            // 连接建立成功的回调函数
+
+            // 【获取 C++ 对象】
+            // channel.objects 包含了所有在 QML 中通过 WebChannel 注册的对象
+            // "networkManager" 是在 QML 中 channel.registerObject 或者是 WebChannel.id 指定的名字
+            backend = channel.objects.networkManager;
+
+            // 【连接信号】
+            // 当 C++ 端的 NetworkManager 发射 dataReceived 信号时，这个回调函数会被执行
+            backend.dataReceived.connect(function (data) {
+              log("收到后台数据: " + data);
+              // 将获得的数据显示在页面上
+              document.getElementById("backend-response").innerText = data;
+            });
+
+            log("WebChannel 连接成功，C++对象已获取。");
+          });
+        } else {
+          console.error(
+            "未检测到 qt 对象，请在该页面放入 Qt WebEngineView 中运行。"
+          );
+        }
+
+        showPage("page-overview");
+      };
+
+      function showPage(pageId) {
+        var pages = document.querySelectorAll(".page");
+        pages.forEach((p) => {
+          // 简单的显示/隐藏逻辑
+          if (p.id === pageId) p.style.display = "block";
+          else p.style.display = "none";
+        });
+
+        // 切换侧边栏按钮的高亮状态
+        var buttons = document.querySelectorAll("#sidebar button");
+        buttons.forEach((b) => b.classList.remove("active"));
+        // ... (此处省略了根据 pageId 反向查找 button 的复杂逻辑，仅为演示)
+      }
+
+      // 触发 C++ 网络请求
+      function triggerFetch() {
+        if (backend) {
+          log("正在调用 C++ fetchAPI()...");
+          // 【调用 C++ 方法】
+          // 直接像调用 JS 函数一样调用 C++ 的 Q_INVOKABLE 函数
+          backend.fetchAPI();
+        } else {
+          log("错误: 后端未连接，backend 对象为空");
+        }
+      }
+
+      function log(msg) {
+        var el = document.getElementById("log-area");
+        if (el) {
+          el.innerText += msg + "\n";
+          el.scrollTop = el.scrollHeight;
+        }
+        console.log(msg);
+      }
+
+      function searchKeyword() {
+        var kw = document.getElementById("keyword-input").value;
+        log("搜索关键词: " + kw);
+        // 在此处，你可以扩展 C++ 类，添加 search(QString kw) 函数，然后在这里调用 backend.search(kw)
+      }
+    </script>
+  </head>
+  <body>
+    <div id="sidebar">
+      <div style="padding: 20px; font-weight: bold; font-size: 20px">
+        Picture App
+      </div>
+      <button onclick="showPage('page-add')">图片加入</button>
+      <button onclick="showPage('page-overview')">图片总览</button>
+      <button onclick="showPage('page-search')">图片搜索</button>
+      <button onclick="showPage('page-backend')">数据后台</button>
+    </div>
+
+    <div id="content">
+      <!-- 图片加入 -->
+      <div id="page-add" class="page">
+        <h2>图片加入</h2>
+        <div class="card">
+          <p>点击下方按钮选择图片上传 (模拟)</p>
+          <input type="file" id="file-input" />
+          <button
+            class="action-btn"
+            onclick="log('选择了文件: ' + document.getElementById('file-input').value)"
+          >
+            上传
+          </button>
+        </div>
+      </div>
+
+      <!-- 图片总览 -->
+      <div id="page-overview" class="page active">
+        <h2>图片总览</h2>
+        <div class="card" style="height: 600px">
+          <h3>Qt 官方文档预览</h3>
+          <!-- 使用 iframe 展示外部网站 -->
+          <iframe
+            src="https://doc.qt.io/qt-6/zh/qtgui-index.html"
+            style="width: 100%; height: 100%; border: none"
+          ></iframe>
+        </div>
+      </div>
+
+      <!-- 图片搜索 -->
+      <div id="page-search" class="page">
+        <h2>图片搜索</h2>
+        <div class="card">
+          <h3>关键词搜索</h3>
+          <input type="text" id="keyword-input" placeholder="输入关键词..." />
+          <button class="action-btn" onclick="searchKeyword()">搜索</button>
+        </div>
+        <div class="card">
+          <h3>以图搜图</h3>
+          <div
+            style="
+              border: 2px dashed #bdc3c7;
+              padding: 40px;
+              text-align: center;
+            "
+          >
+            拖拽图片到这里或点击上传
+          </div>
+        </div>
+      </div>
+
+      <!-- 数据后台 -->
+      <div id="page-backend" class="page">
+        <h2>数据后台</h2>
+        <div class="card">
+          <h3>服务器通信 (LibCURL)</h3>
+          <p>
+            点击按钮测试 LibCURL 请求
+            https://jsonplaceholder.typicode.com/posts/1
+          </p>
+          <button class="action-btn" onclick="triggerFetch()">发送请求</button>
+          <h4>响应数据:</h4>
+          <div
+            id="backend-response"
+            style="
+              background: #f1f1f1;
+              padding: 10px;
+              border-radius: 4px;
+              min-height: 50px;
+            "
+          >
+            Waiting...
+          </div>
+        </div>
+        <div class="card">
+          <h3>日志</h3>
+          <div id="log-area"></div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
